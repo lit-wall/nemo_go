@@ -96,14 +96,31 @@ func (h *Hunter) GetQueryString(domain string, config execute.OnlineAPIConfig, f
 	if words := h.getFilterTitleKeyword(filterKeyword); len(words) > 0 {
 		query = fmt.Sprintf("(%s) and (%s)", query, words)
 	}
-	if config.IsIgnoreChinaOther {
-		query = fmt.Sprintf("(%s) and (ip.country=\"CN\" and ip.province!=\"香港\")", query)
-	} else {
-		if config.IsIgnoreOutsideChina {
-			query = fmt.Sprintf("(%s) and ip.country=\"CN\"", query)
-		}
-	}
+	query = h.appendRegionFilter(query, config)
 	return
+}
+
+// appendRegionFilter 区域过滤（魔改：MCP 自动发现按 region 路由）。
+// RegionFilter 非空时优先；为空则回退旧版布尔开关（Web UI 任务兼容）。
+func (h *Hunter) appendRegionFilter(query string, config execute.OnlineAPIConfig) string {
+	switch config.RegionFilter {
+	case "mainland":
+		return fmt.Sprintf("(%s) and (ip.country=\"CN\" and ip.province!=\"香港\" and ip.province!=\"台湾\" and ip.province!=\"澳門\")", query)
+	case "china":
+		return fmt.Sprintf("(%s) and ip.country=\"CN\"", query)
+	case "oversea":
+		return fmt.Sprintf("(%s) and ip.country!=\"CN\"", query)
+	case "all", "":
+		if config.IsIgnoreChinaOther {
+			return fmt.Sprintf("(%s) and (ip.country=\"CN\" and ip.province!=\"香港\")", query)
+		}
+		if config.IsIgnoreOutsideChina {
+			return fmt.Sprintf("(%s) and ip.country=\"CN\"", query)
+		}
+		return query
+	default:
+		return query
+	}
 }
 
 func (h *Hunter) Run(query string, apiKey string, pageIndex int, pageSize int, config execute.OnlineAPIConfig) (pageResult []OnlineSearchResult, sizeTotal int, err error) {

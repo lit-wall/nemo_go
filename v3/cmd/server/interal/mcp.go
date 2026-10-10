@@ -69,13 +69,17 @@ func StartMCPServer() {
 	s.AddTool(mcp.NewTool("domainscan",
 		mcp.WithDescription("使用nemo创建一个域名扫描任务，对域名执行子域名爆破和枚举操作，并进行指纹识别；创建任务后，可通过SSE实时获取任务状态和结果"),
 		mcp.WithString("domain", mcp.Required(), mcp.Description("要扫描的域名，如example.com，一次只能指定一个域名")),
+		mcp.WithString("region", mcp.DefaultString("mainland"), mcp.Description("区域过滤：mainland=中国大陆 / china=全中国 / oversea=海外 / all=不限制（默认mainland，旧任务行为不变）")),
 		mcp.WithBoolean("pocscan", mcp.DefaultBool(false), mcp.Description("是否开启POC和漏洞扫描，开启后会根据扫描的指纹自动匹配poc，扫描常见漏洞的POC，默认关闭")),
 	), DomainscanHandler)
 
 	s.AddTool(mcp.NewTool("onlineapi_scan",
 		mcp.WithDescription("使用nemo创建一个调用在线API查询资产信息的任务，并进行指纹识别；创建任务后，可通过SSE实时获取任务状态和结果"),
-		mcp.WithString("target", mcp.Required(), mcp.Description("要查询的资产信息，可以是IP地址或者域名，一次只能指定一个资产信息")),
+		mcp.WithString("target", mcp.Required(), mcp.Description("要查询的资产信息：mode=domain/ip 时为IP地址或域名（一次一个）；mode=keyword 时为原始搜索表达式（dork，如 title=\"商城\" && port=\"80\"）")),
 		mcp.WithString("api", mcp.DefaultString("fofa"), mcp.Description("要调用的在线API，支持fofa、hunter、quake，请选择其中一个；一次只能指定一个API，默认为fofa")),
+		mcp.WithString("mode", mcp.DefaultString("domain"), mcp.Description("查询模式：domain=按域名查询 / ip=按IP查询 / keyword=按原始搜索表达式查询（零种子自动发现，默认domain）")),
+		mcp.WithString("region", mcp.DefaultString("mainland"), mcp.Description("区域过滤：mainland=中国大陆 / china=全中国 / oversea=海外（不含中国大陆）/ all=不限制（默认mainland）")),
+		mcp.WithString("limit", mcp.DefaultString("1000"), mcp.Description("搜索结果数量上限，默认1000")),
 		mcp.WithBoolean("pocscan", mcp.DefaultBool(false), mcp.Description("是否开启POC和漏洞扫描，开启后会根据扫描的指纹自动匹配poc，扫描常见漏洞的POC，默认关闭")),
 	), OnlineAPIHandler)
 
@@ -179,7 +183,7 @@ func PortscanHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	if pocscan {
 		taskName = "MCP-端口扫描-指纹识别-POC扫描-指纹匹配"
 	}
-	if err = newMainTask(config, workspaceId, ip, taskId, taskName, "来自MCP的端口扫描任务"); err != nil {
+	if err = newMainTask(config, workspaceId, ip, taskId, taskName, "来自MCP的端口扫描任务", false); err != nil {
 		logging.RuntimeLog.Error(err)
 		return core.FailResponseError("创建任务失败，请稍后重试", err)
 	}
@@ -193,11 +197,18 @@ func DomainscanHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	}
 	// 处理参数
 	var err error
-	var domain, workspaceId string
+	var domain, region, workspaceId string
 	var pocscan bool
 	if domain, err = core.GetRequiredArgumentString(&request, "domain"); err != nil {
 		return core.FailResponseError("请指定目标域名", err)
 	}
+	// region：魔改扩展（mainland/china/oversea/all）→ 映射到域名扫描的区域开关
+	region = core.GetDefaultArgumentString(&request, "region", "mainland")
+	if region != "mainland" && region != "china" && region != "oversea" && region != "all" {
+		return core.FailResponseError("不支持的区域过滤", fmt.Errorf("region 仅支持 mainland/china/oversea/all，收到 %q", region))
+	}
+	ignoreChinaOther := region == "mainland"
+	ignoreOutsideChina := region == "china"
 	pocscan = core.GetDefaultArgumentBool(&request, "pocscan", false)
 	if workspaceId, err = core.GetWorkspaceIdFromContext(ctx); err != nil {
 		return core.FailResponseError("获取工作空间失败", err)
@@ -207,15 +218,15 @@ func DomainscanHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		DomainScan: map[string]execute.DomainscanConfig{
 			"subfinder": {
 				IsIgnoreCDN:            true,
-				IsIgnoreChinaOther:     true,
-				IsIgnoreOutsideChina:   true,
+				IsIgnoreChinaOther:     ignoreChinaOther,
+				IsIgnoreOutsideChina:   ignoreOutsideChina,
 				MaxResolvedDomainPerIP: 100,
 			},
 			"massdns": {
 				WordlistFile:           "normal",
 				IsIgnoreCDN:            true,
-				IsIgnoreChinaOther:     true,
-				IsIgnoreOutsideChina:   true,
+				IsIgnoreChinaOther:     ignoreChinaOther,
+				IsIgnoreOutsideChina:   ignoreOutsideChina,
 				MaxResolvedDomainPerIP: 100,
 			},
 		},
@@ -240,7 +251,7 @@ func DomainscanHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	if pocscan {
 		taskName = "MCP-域名扫描-指纹识别-POC扫描-指纹匹配"
 	}
-	if err = newMainTask(config, workspaceId, domain, taskId, taskName, "来自MCP的域名扫描任务"); err != nil {
+	if err = newMainTask(config, workspaceId, domain, taskId, taskName, "来自MCP的域名扫描任务", false); err != nil {
 		logging.RuntimeLog.Error(err)
 		return core.FailResponseError("创建任务失败，请稍后重试", err)
 	}
@@ -254,24 +265,43 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	}
 	// 处理参数
 	var err error
-	var target, api, workspaceId string
+	var target, api, mode, region, workspaceId string
 	var pocscan bool
+	var limit int
 	if target, err = core.GetRequiredArgumentString(&request, "target"); err != nil {
-		return core.FailResponseError("请指定目标，可以是IP或者域名", err)
+		return core.FailResponseError("请指定目标（mode=domain/ip 时为IP或域名，mode=keyword 时为原始搜索表达式）", err)
+	}
+	if strings.TrimSpace(target) == "" {
+		return core.FailResponseError("目标不能为空", fmt.Errorf("target 为空"))
+	}
+	if mode = core.GetDefaultArgumentString(&request, "mode", "domain"); mode != "domain" && mode != "ip" && mode != "keyword" {
+		return core.FailResponseError("不支持的查询模式", fmt.Errorf("mode 仅支持 domain/ip/keyword，收到 %q", mode))
+	}
+	if region = core.GetDefaultArgumentString(&request, "region", "mainland"); region != "mainland" && region != "china" && region != "oversea" && region != "all" {
+		return core.FailResponseError("不支持的区域过滤", fmt.Errorf("region 仅支持 mainland/china/oversea/all，收到 %q", region))
+	}
+	if limit = core.GetDefaultArgumentInt(&request, "limit", 1000); limit <= 0 {
+		limit = 1000
 	}
 	api = core.GetDefaultArgumentString(&request, "api", "fofa")
+	if api != "fofa" && api != "hunter" && api != "quake" && api != "crtsh" {
+		return core.FailResponseError("不支持的在线API", fmt.Errorf("api 仅支持 fofa/hunter/quake/crtsh，收到 %q", api))
+	}
 	pocscan = core.GetDefaultArgumentBool(&request, "pocscan", false)
 	if workspaceId, err = core.GetWorkspaceIdFromContext(ctx); err != nil {
 		return core.FailResponseError("获取工作空间失败", err)
 	}
+	keywordMode := mode == "keyword"
 	// 任务参数
 	config := execute.ExecutorConfig{
 		OnlineAPI: map[string]execute.OnlineAPIConfig{
 			api: {
+				SearchByKeyWord:        keywordMode,
+				RegionFilter:           region,
 				IsIgnoreCDN:            true,
 				IsIgnoreChinaOther:     true,
 				IsIgnoreOutsideChina:   true,
-				SearchLimitCount:       1000,
+				SearchLimitCount:       limit,
 				SearchPageSize:         100,
 				MaxOpenedPortPerIp:     50,
 				MaxResolvedDomainPerIP: 100,
@@ -298,7 +328,14 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	if pocscan {
 		taskName = "MCP-在线API调用-POC扫描-指纹匹配"
 	}
-	if err = newMainTask(config, workspaceId, target, taskId, taskName, "来自MCP的在线API调用任务"); err != nil {
+	if keywordMode {
+		if !pocscan {
+			taskName = "MCP-在线API搜索表达式"
+		} else {
+			taskName = "MCP-在线API搜索表达式-POC扫描"
+		}
+	}
+	if err = newMainTask(config, workspaceId, target, taskId, taskName, "来自MCP的在线API调用任务", keywordMode); err != nil {
 		logging.RuntimeLog.Error(err)
 		return core.FailResponseError("创建任务失败，请稍后重试", err)
 	}
@@ -573,7 +610,7 @@ func getTaskResultData(workspaceId, taskId string, filter bson.M, pageSize, page
 }
 
 // newMainTask 创建一个新的maintask
-func newMainTask(config execute.ExecutorConfig, workspaceId string, target string, taskId string, taskName string, description string) (err error) {
+func newMainTask(config execute.ExecutorConfig, workspaceId string, target string, taskId string, taskName string, description string, keywordMode bool) (err error) {
 	configJson, _ := json.Marshal(config)
 	mongoClient, err := db.GetClient()
 	if err != nil {
@@ -583,12 +620,19 @@ func newMainTask(config execute.ExecutorConfig, workspaceId string, target strin
 	// 将原始target字符串解析为TargetMap并序列化：
 	// 任务调度器 processCreatedTask 使用 UnmarshalTargetMap 期望 JSON 格式（如 {"ip":"1.2.3.0/24"}），
 	// 直接存原始字符串会导致任务卡在 STARTED 不执行（MCP建任务bug修复）
-	targetMapList := core.ParseStringTargetToTargetMap(target, false)
-	targetMap := make(map[string]string)
-	for k, v := range targetMapList {
-		targetMap[k] = strings.Join(v, ",")
+	var targetContent []byte
+	if keywordMode {
+		// 关键词（dork）模式：搜索表达式不是IP/域名，挂到 unit 键（processExecutorTask
+		// 的 unit 分支会处理 OnlineAPI executor，SearchByKeyWord 模式下整串透传不切分）。
+		targetContent, _ = json.Marshal(map[string]string{execute.TargetUnit: target})
+	} else {
+		targetMapList := core.ParseStringTargetToTargetMap(target, false)
+		targetMap := make(map[string]string)
+		for k, v := range targetMapList {
+			targetMap[k] = strings.Join(v, ",")
+		}
+		targetContent, _ = json.Marshal(targetMap)
 	}
-	targetContent, _ := json.Marshal(targetMap)
 	doc := db.MainTaskDocument{
 		WorkspaceId: workspaceId,
 		TaskId:      taskId,

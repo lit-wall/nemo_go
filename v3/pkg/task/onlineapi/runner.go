@@ -51,11 +51,13 @@ func NewExecutor(executeName string, isProxy bool) (Executor, APIKey) {
 		"fofa":   &FOFA{IsProxy: isProxy},
 		"hunter": &Hunter{IsProxy: isProxy},
 		"quake":  &Quake{IsProxy: isProxy},
+		"crtsh":  &Crtsh{IsProxy: isProxy},
 	}
 	apiKeyMap := map[string]APIKey{
 		"fofa":   {apiName: "fofa", apiKey: conf.GlobalWorkerConfig().API.Fofa.Key},
 		"hunter": {apiName: "hunter", apiKey: conf.GlobalWorkerConfig().API.Hunter.Key},
 		"quake":  {apiName: "quake", apiKey: conf.GlobalWorkerConfig().API.Quake.Key},
+		"crtsh":  {apiName: "crtsh", apiKey: ""},
 	}
 	return executorMap[executeName], apiKeyMap[executeName]
 }
@@ -79,10 +81,26 @@ func Do(taskInfo execute.ExecutorTaskInfo) (result []OnlineSearchResult) {
 			return
 		}
 	}
-	targets := utils.MergeTarget(taskInfo.TargetMap[execute.TargetIp], taskInfo.TargetMap[execute.TargetRootDomain])
+	var targets string
+	if config.SearchByKeyWord {
+		// 关键词（dork）模式：查询表达式整串透传，不进 MergeTarget 的逗号切分/集合重排（防表达式被拆断或乱序）
+		// 优先读 unit 键（MCP keyword 模式），回退 rootDomain（旧任务兼容）
+		targets = strings.TrimSpace(taskInfo.TargetMap[execute.TargetUnit])
+		if targets == "" {
+			targets = strings.TrimSpace(taskInfo.TargetMap[execute.TargetRootDomain])
+		}
+	} else {
+		targets = utils.MergeTarget(taskInfo.TargetMap[execute.TargetIp], taskInfo.TargetMap[execute.TargetRootDomain])
+	}
 	filterKeyword := loadFilterKeyword()
 	config.Target = targets
-	for _, line := range strings.Split(targets, ",") {
+	var lines []string
+	if config.SearchByKeyWord {
+		lines = []string{strings.TrimSpace(targets)}
+	} else {
+		lines = strings.Split(targets, ",")
+	}
+	for _, line := range lines {
 		domain := strings.TrimSpace(line)
 		if domain == "" {
 			continue

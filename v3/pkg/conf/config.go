@@ -79,6 +79,7 @@ type Server struct {
 	Redis        Redis       `yaml:"redis"`        // redis配置
 	RedisTunnel  RedisTunnel `yaml:"redisTunnel"`  // 提供redis tunnel服务的配置
 	MCPServer    MCPServer   `yaml:"mcpServer"`    // mcp服务配置
+	Login        Login       `yaml:"login"`        // 魔改：机器令牌登录（服务间调用免验证码）
 }
 
 type Worker struct {
@@ -265,4 +266,17 @@ func GetAbsRootPath() string {
 		return ""
 	}
 	return rootPath
+}
+
+type Login struct {
+	// AuthKey 机器令牌：请求头 X-Nemo-Auth 与之相等时，Release 模式登录免验证码（供上游平台机器调用）
+	AuthKey string `yaml:"authKey" json:"authKey"`
+}
+
+// GetLoginAuthKey 机器令牌（未配置时返回空串）
+func (s *Server) GetLoginAuthKey() string {
+	if s == nil {
+		return ""
+	}
+	return s.Login.AuthKey
 }

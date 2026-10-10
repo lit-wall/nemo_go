@@ -71,18 +71,35 @@ func (f *FOFA) GetQueryString(domain string, config execute.OnlineAPIConfig, fil
 	if words := f.getFilterTitleKeyword(filterKeyword); len(words) > 0 {
 		query = fmt.Sprintf("(%s) && (%s)", query, words)
 	}
-	if config.IsIgnoreChinaOther {
-		query = fmt.Sprintf("(%s) && (country=\"CN\" && region!=\"HK\" && region!=\"TW\"  && region!=\"MO\")", query)
-	} else {
-		if config.IsIgnoreOutsideChina {
-			query = fmt.Sprintf("(%s) && (country=\"CN\")", query)
-		}
-	}
+	query = f.appendRegionFilter(query, config)
 	if len(config.SearchStartTime) > 0 {
 		query = fmt.Sprintf("(%s) && after=\"%s\"", query, config.SearchStartTime)
 	}
 
 	return
+}
+
+// appendRegionFilter 区域过滤（魔改：MCP 自动发现按 region 路由）。
+// RegionFilter 非空时优先；为空则回退旧版布尔开关（Web UI 任务兼容）。
+func (f *FOFA) appendRegionFilter(query string, config execute.OnlineAPIConfig) string {
+	switch config.RegionFilter {
+	case "mainland":
+		return fmt.Sprintf("(%s) && (country=\"CN\" && region!=\"HK\" && region!=\"TW\" && region!=\"MO\")", query)
+	case "china":
+		return fmt.Sprintf("(%s) && (country=\"CN\")", query)
+	case "oversea":
+		return fmt.Sprintf("(%s) && (country!=\"CN\")", query)
+	case "all", "":
+		if config.IsIgnoreChinaOther {
+			return fmt.Sprintf("(%s) && (country=\"CN\" && region!=\"HK\" && region!=\"TW\"  && region!=\"MO\")", query)
+		}
+		if config.IsIgnoreOutsideChina {
+			return fmt.Sprintf("(%s) && (country=\"CN\")", query)
+		}
+		return query
+	default:
+		return query
+	}
 }
 
 func (f *FOFA) getFilterTitleKeyword(filterKeyword map[string]struct{}) string {

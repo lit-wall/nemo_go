@@ -98,6 +98,9 @@ type OnlineAPIConfig struct {
 	IsIgnoreChinaOther   bool   `json:"ignorechinaother,omitempty" form:"ignorechinaother"`
 	IsIgnoreOutsideChina bool   `json:"ignoreoutsidechina,omitempty" form:"ignoreoutsidechina"`
 	SearchByKeyWord      bool   `json:"keywordsearch,omitempty" form:"keywordsearch"`
+	// 魔改扩展：区域过滤（mainland=中国大陆 / china=全中国 / oversea=海外 / all=不限制）。
+	// 非空时优先生效，下方两个布尔开关保留给旧任务（Web UI 建任务）。
+	RegionFilter         string `json:"regionfilter,omitempty" form:"regionfilter"`
 	SearchStartTime      string `json:"searchstarttime,omitempty" form:"searchstarttime"`
 	SearchLimitCount     int    `json:"searchlimitcount,omitempty" form:"searchlimitcount"`
 	SearchPageSize       int    `json:"searchpagesize,omitempty" form:"searchpagesize"`

@@ -160,18 +160,22 @@ func (h *Httpx) getFaviconImage(iconHash string, iconUrlPathFile string) ([]byte
 }
 
 // MatchChainReactorsFingers ChainReactorsFingers指纹识别
+// 魔改：fingers 依赖改指 v1.2.1（原悬空 commit 的 Engine.DetectContent 不存在于该 tag），
+// 改为直接调用 FingersEngine.WebMatch（返回 map[名称]*common.Framework）。
 func (h *Httpx) MatchChainReactorsFingers(header, body []byte) (fingers []string) {
 	var buffer bytes.Buffer
 	buffer.Write(header)
 	buffer.Write([]byte("\r\n\r\n"))
 	buffer.Write(body)
-	frames, err := h.chainreactorsEngine.DetectContent(buffer.Bytes())
-	if err != nil {
-		logging.RuntimeLog.Errorf("调用chainreactors指纹检测失败，err:%v", err)
+	fe := h.chainreactorsEngine.Fingers()
+	if fe == nil {
+		logging.RuntimeLog.Warning("chainreactors指纹引擎未就绪，跳过被动指纹匹配")
 		return
 	}
-	for _, f := range frames.List() {
-		fingers = append(fingers, f.String())
+	for _, f := range fe.WebMatch(buffer.Bytes()) {
+		if f != nil {
+			fingers = append(fingers, f.String())
+		}
 	}
 
 	return

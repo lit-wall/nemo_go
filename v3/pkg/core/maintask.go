@@ -337,7 +337,7 @@ func processExecutorTask(mainTaskInfo execute.MainTaskInfo) (err error) {
 			return err
 		}
 	}
-	// unit任务：icpPlus
+	// unit任务：icpPlus、onlineapi（零种子dork模式使用unit键）
 	if mainTaskInfo.TargetMap[execute.TargetUnit] != "" {
 		ts := NewTaskSlice(mainTaskInfo.TargetMap[execute.TargetUnit], mainTaskInfo.TargetSliceType, mainTaskInfo.TargetSliceNum)
 		targets := ts.SplitTargets()
@@ -349,6 +349,11 @@ func processExecutorTask(mainTaskInfo execute.MainTaskInfo) (err error) {
 					if err = f(executor, mti); err != nil {
 						return err
 					}
+				}
+			}
+			for executor := range mainTaskInfo.ExecutorConfig.OnlineAPI {
+				if err = f(executor, mti); err != nil {
+					return err
 				}
 			}
 		}

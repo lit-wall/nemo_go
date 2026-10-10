@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hanc00l/nemo_go/v3/pkg/cert"
@@ -175,11 +176,20 @@ func GetDefaultArgumentInt(request *mcp.CallToolRequest, name string, defaultInt
 	if !ok {
 		return defaultInt
 	}
-	v, err := strconv.Atoi(v.(string))
-	if err != nil {
-		return defaultInt
+	switch t := v.(type) {
+	case string:
+		// 魔改：JSON-RPC 数字参数可能解码为 float64，原 v.(string)/v.(int) 硬断言会 panic
+		if n, err := strconv.Atoi(strings.TrimSpace(t)); err == nil {
+			return n
+		}
+	case int:
+		return t
+	case int64:
+		return int(t)
+	case float64:
+		return int(t)
 	}
-	return v.(int)
+	return defaultInt
 }
 
 func GetDefaultArgumentString(request *mcp.CallToolRequest, name string, defaultString string) string {

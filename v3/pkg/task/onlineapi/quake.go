@@ -141,14 +141,31 @@ func (q *Quake) GetQueryString(domain string, config execute.OnlineAPIConfig, fi
 	if words := q.getFilterTitleKeyword(filterKeyword); len(words) > 0 {
 		query = fmt.Sprintf("(%s) AND %s", query, words)
 	}
-	if config.IsIgnoreChinaOther {
-		query = fmt.Sprintf("(%s) AND country:\"CN\" AND NOT province:\"Hongkong\"", query)
-	} else {
-		if config.IsIgnoreOutsideChina {
-			query = fmt.Sprintf("(%s) AND country:\"CN\"", query)
-		}
-	}
+	query = q.appendRegionFilter(query, config)
 	return
+}
+
+// appendRegionFilter 区域过滤（魔改：MCP 自动发现按 region 路由）。
+// RegionFilter 非空时优先；为空则回退旧版布尔开关（Web UI 任务兼容）。
+func (q *Quake) appendRegionFilter(query string, config execute.OnlineAPIConfig) string {
+	switch config.RegionFilter {
+	case "mainland":
+		return fmt.Sprintf("(%s) AND country:\"CN\" AND NOT province:\"Hongkong\" AND NOT province:\"Taiwan\" AND NOT province:\"Macao\"", query)
+	case "china":
+		return fmt.Sprintf("(%s) AND country:\"CN\"", query)
+	case "oversea":
+		return fmt.Sprintf("(%s) AND NOT country:\"CN\"", query)
+	case "all", "":
+		if config.IsIgnoreChinaOther {
+			return fmt.Sprintf("(%s) AND country:\"CN\" AND NOT province:\"Hongkong\"", query)
+		}
+		if config.IsIgnoreOutsideChina {
+			return fmt.Sprintf("(%s) AND country:\"CN\"", query)
+		}
+		return query
+	default:
+		return query
+	}
 }
 
 func (q *Quake) Run(query string, apiKey string, pageIndex int, pageSize int, config execute.OnlineAPIConfig) (pageResult []OnlineSearchResult, sizeTotal int, err error) {

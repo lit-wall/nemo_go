@@ -3,7 +3,7 @@ service:
     port: 5001
     authKey: da8Ae0e295eba72a7rgb1d34b13d86b
 redis:
-    host: redis
+    host: nemo-redis
     port: 6379
     password:
 redisTunnel:

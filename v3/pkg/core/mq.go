@@ -32,6 +32,7 @@ var taskTopicDefineMap = map[string]string{
 	"fofa":        TopicPassive,
 	"quake":       TopicPassive,
 	"hunter":      TopicPassive,
+	"crtsh":       TopicPassive,
 	"icp":         TopicPassive,
 	"icpPlus":     TopicPassive,
 	"icpPlus2":    TopicPassive,

@@ -1,0 +1,2 @@
+# 空 .gitignore：阻断外层仓库的 logs/ 等规则侵入内层 nemo 仓库的 .git 目录
+top

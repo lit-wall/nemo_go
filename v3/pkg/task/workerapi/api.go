@@ -27,6 +27,7 @@ var taskMaps = map[string]interface{}{
 	"fofa":        OnlineAPI,
 	"hunter":      OnlineAPI,
 	"quake":       OnlineAPI,
+	"crtsh":       OnlineAPI,
 	"icp":         ICPScan,
 	"icpPlus":     ICPScan,
 	"icpPlus2":    ICPScan,

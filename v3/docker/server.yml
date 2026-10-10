@@ -11,17 +11,19 @@ imageService:
   port:
   authKey:
 database:
-  host: mongodb
+  host: nemo-mongodb
   port: 27017
   username:
   password:
 redis:
-  host: redis
+  host: nemo-redis
   port: 6379
   password:
 redisTunnel:
   port: 5002
   authKey: da8Ae0e295eba72a7rgb1d34b13d86b
+login:
+  authKey: autoshow-nemo-machine-2026
 mcpServer:
   host: 0.0.0.0
   port: 5500
@@ -31,5 +33,9 @@ mcpServer:
   authToken:
     - token: da8Ae0e295eba72a7rgb1d34b13d86b
       description: Token for nemo user
+      workspaceId:
+        - 9690c0a2-e4fc-43f0-a259-7c0d054be229
+    - token: autoshow-nemo-machine-2026
+      description: AutoShow 平台机器令牌（采集/安全分析/渗透任务编排）
       workspaceId:
         - 9690c0a2-e4fc-43f0-a259-7c0d054be229

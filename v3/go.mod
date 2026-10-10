@@ -6,7 +6,7 @@ require (
 	github.com/RichardKnop/machinery/v2 v2.0.13
 	github.com/beego/beego/v2 v2.3.4
 	github.com/chainreactors/fingers v1.0.1-0.20240730173434-48ba7446b94b
-	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
+	github.com/chainreactors/utils v0.0.0-20260529172343-6465cb8568b2
 	github.com/disintegration/imaging v1.6.2
 	github.com/google/uuid v1.6.0
 	github.com/jessevdk/go-flags v1.6.1
@@ -48,6 +48,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/iam v1.4.0 // indirect
 	cloud.google.com/go/pubsub v1.47.0 // indirect
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -64,17 +65,17 @@ require (
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 // indirect
-	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261 // indirect
+	github.com/chainreactors/logs v0.0.0-20260508055944-c678762ed15c // indirect
+	github.com/chainreactors/neutron v0.0.0-20260608084636-c81691731908 // indirect
+	github.com/chainreactors/words v0.0.0-20260520145736-270600e60fb4 // indirect
 	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/dgryski/go-jump v0.0.0-20211018200510-ba001c3ffce0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/dlclark/regexp2 v1.8.1 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/edwingeng/doublejump v1.0.1 // indirect
-	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/facebookincubator/nvdtools v0.1.5 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -102,6 +103,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -168,6 +170,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161 // indirect
 	github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b // indirect
+	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
@@ -179,6 +182,8 @@ require (
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	github.com/wasilibs/go-re2 v1.10.0 // indirect
+	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/weppos/publicsuffix-go v0.40.2 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
@@ -221,3 +226,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 )
+
+// 魔改：上游 chainreactors/fingers 的 pseudo-version 所指 commit(48ba7446b94b)
+// 已从上游任何分支删除（悬空 commit），模块无法再解析；改指向最近 tag v1.2.1
+// （指纹数据经 resources 包内嵌，API 适配见 pkg/task/fingerprint/httpx.go）。
+replace github.com/chainreactors/fingers => github.com/chainreactors/fingers v1.2.1

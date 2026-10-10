@@ -36,8 +36,14 @@ func (c *LoginController) IndexAction() {
 // LoginAction 登录验证
 func (c *LoginController) LoginAction() {
 	if conf.RunMode == conf.Release && !Cpt.VerifyReq(c.Ctx.Request) {
-		c.Redirect("/", http.StatusFound)
-		return
+		// 魔改：机器令牌（X-Nemo-Auth 头，与 server.yml login.authKey 一致）免验证码登录，
+		// 供上游平台（AutoShow）等服务间调用；令牌未配置或不等仍走原验证码流程。
+		if authKey := c.Ctx.Input.Header("X-Nemo-Auth"); authKey != "" && authKey == conf.GlobalServerConfig().GetLoginAuthKey() {
+			// 令牌匹配，放行
+		} else {
+			c.Redirect("/", http.StatusFound)
+			return
+		}
 	}
 	userName := c.GetString("username", "")
 	password := c.GetString("password", "")
