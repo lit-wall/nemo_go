@@ -112,6 +112,13 @@ func Do(taskInfo execute.ExecutorTaskInfo) (result []OnlineSearchResult) {
 	return
 }
 
+// keylessAPIs 无需 API Key 的搜索引擎（crt.sh 公共证书日志）。
+// 这类 API 的 apiKey 为空是常态：空 key 直接放行执行，
+// 不走「没有可用的key」快速失败路径（否则 MCP 扫描恒返回 0 结果）。
+var keylessAPIs = map[string]bool{
+	"crtsh": true,
+}
+
 // query 查询一个domain
 func query(executor Executor, config execute.OnlineAPIConfig, domain string, filterKeyword map[string]struct{}, apiKey APIKey) (result []OnlineSearchResult) {
 	queryString := executor.GetQueryString(domain, config, filterKeyword)
@@ -152,7 +159,7 @@ func retriedQuery(executor Executor, config execute.OnlineAPIConfig, query strin
 		RETRIED = 2 * len(allKeys)
 	}
 	if apiKey.apiKeyInUse == "" {
-		if apiKey.apiKeyInUse = getOneAPIKey(apiKey); apiKey.apiKeyInUse == "" {
+		if apiKey.apiKeyInUse = getOneAPIKey(apiKey); apiKey.apiKeyInUse == "" && !keylessAPIs[apiKey.apiName] {
 			return nil, 0, errors.New(fmt.Sprintf("%s没有可用的key", apiKey.apiName))
 		}
 	}
@@ -166,7 +173,7 @@ func retriedQuery(executor Executor, config execute.OnlineAPIConfig, query strin
 		logging.RuntimeLog.Error(msg)
 		logging.CLILog.Error(msg)
 
-		if apiKey.apiKeyInUse = getOneAPIKey(apiKey); apiKey.apiKeyInUse == "" {
+		if apiKey.apiKeyInUse = getOneAPIKey(apiKey); apiKey.apiKeyInUse == "" && !keylessAPIs[apiKey.apiName] {
 			return nil, 0, errors.New(fmt.Sprintf("%s没有可用的key", apiKey.apiName))
 		}
 		time.Sleep(3 * time.Second)
