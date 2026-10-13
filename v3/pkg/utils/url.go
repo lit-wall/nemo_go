@@ -251,7 +251,8 @@ func GetProxyHttpClient(isProxy bool) *http.Client {
 func GetTaskProxyHttpClient(proxy string, isProxy bool) *http.Client {
 	proxy = strings.TrimSpace(proxy)
 	if proxy != "" {
-		if proxyURL, err := url.Parse(proxy); err == nil {
+		proxyURL, err := url.Parse(proxy)
+		if err == nil {
 			return &http.Client{
 				Transport: &http.Transport{
 					Proxy:           http.ProxyURL(proxyURL),
