@@ -188,7 +188,8 @@ func (q *Quake) Run(query string, apiKey string, pageIndex int, pageSize int, co
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-QuakeToken", apiKey)
 	request.Header.Add("User-Agent", userAgent)
-	resp, err := utils.GetProxyHttpClient(q.IsProxy).Do(request)
+	// 任务级代理优先（MCP 按出口角色注入），避免容器出口 IP 直接暴露给 quake
+	resp, err := utils.GetTaskProxyHttpClient(config.Proxy, q.IsProxy).Do(request)
 	if err != nil {
 		return
 	}

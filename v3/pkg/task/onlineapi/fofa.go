@@ -132,7 +132,8 @@ func (f *FOFA) Run(query string, apiKey string, pageIndex int, pageSize int, con
 	params.Add("page", strconv.Itoa(pageIndex))
 	params.Add("size", strconv.Itoa(pageSize))
 	request.URL.RawQuery = params.Encode()
-	resp, err := utils.GetProxyHttpClient(f.IsProxy).Do(request)
+	// 任务级代理优先（MCP 按出口角色注入），避免容器出口 IP 直接暴露给 fofa
+	resp, err := utils.GetTaskProxyHttpClient(config.Proxy, f.IsProxy).Do(request)
 	if err != nil {
 		return
 	}

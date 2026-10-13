@@ -245,6 +245,26 @@ func GetProxyHttpClient(isProxy bool) *http.Client {
 	return httpClient
 }
 
+// GetTaskProxyHttpClient 获取任务级代理的 http client（匿名性加固，V2.0.8 P2.5）。
+// 优先级：任务指定代理（proxy 非空，MCP 建任务时按出口角色注入）> 全局代理开关
+// （isProxy + worker 配置）> 直连。任务代理解析失败时回退全局策略并告警。
+func GetTaskProxyHttpClient(proxy string, isProxy bool) *http.Client {
+	proxy = strings.TrimSpace(proxy)
+	if proxy != "" {
+		if proxyURL, err := url.Parse(proxy); err == nil {
+			return &http.Client{
+				Transport: &http.Transport{
+					Proxy:           http.ProxyURL(proxyURL),
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			}
+		}
+		logging.RuntimeLog.Warningf("task proxy parse fail: %v, fallback to global policy", err)
+		logging.CLILog.Warningf("task proxy parse fail: %v, fallback to global policy", err)
+	}
+	return GetProxyHttpClient(isProxy)
+}
+
 func MergeTarget(targets ...string) string {
 	targetSet := make(map[string]struct{})
 

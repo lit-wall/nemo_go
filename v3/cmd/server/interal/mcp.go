@@ -80,6 +80,7 @@ func StartMCPServer() {
 		mcp.WithString("mode", mcp.DefaultString("domain"), mcp.Description("查询模式：domain=按域名查询 / ip=按IP查询 / keyword=按原始搜索表达式查询（零种子自动发现，默认domain）")),
 		mcp.WithString("region", mcp.DefaultString("mainland"), mcp.Description("区域过滤：mainland=中国大陆 / china=全中国 / oversea=海外（不含中国大陆）/ all=不限制（默认mainland）")),
 		mcp.WithString("limit", mcp.DefaultString("1000"), mcp.Description("搜索结果数量上限，默认1000")),
+		mcp.WithString("proxy", mcp.DefaultString(""), mcp.Description("可选：任务级出口代理（http://、https:// 或 socks5:// URL）。非空时本任务全部外呼（在线API调用+指纹探测）经该代理发出，容器自身出口IP不暴露；空=默认策略")),
 		mcp.WithBoolean("pocscan", mcp.DefaultBool(false), mcp.Description("是否开启POC和漏洞扫描，开启后会根据扫描的指纹自动匹配poc，扫描常见漏洞的POC，默认关闭")),
 	), OnlineAPIHandler)
 
@@ -265,7 +266,7 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	}
 	// 处理参数
 	var err error
-	var target, api, mode, region, workspaceId string
+	var target, api, mode, region, proxy, workspaceId string
 	var pocscan bool
 	var limit int
 	if target, err = core.GetRequiredArgumentString(&request, "target"); err != nil {
@@ -279,6 +280,12 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 	}
 	if region = core.GetDefaultArgumentString(&request, "region", "mainland"); region != "mainland" && region != "china" && region != "oversea" && region != "all" {
 		return core.FailResponseError("不支持的区域过滤", fmt.Errorf("region 仅支持 mainland/china/oversea/all，收到 %q", region))
+	}
+	// 任务级出口代理（匿名性加固）：非空时校验协议前缀；空值走默认策略（旧任务行为不变）
+	if proxy = strings.TrimSpace(core.GetDefaultArgumentString(&request, "proxy", "")); proxy != "" {
+		if !strings.HasPrefix(proxy, "http://") && !strings.HasPrefix(proxy, "https://") && !strings.HasPrefix(proxy, "socks5://") {
+			return core.FailResponseError("不支持的代理协议", fmt.Errorf("proxy 仅支持 http/https/socks5，收到 %q", proxy))
+		}
 	}
 	if limit = core.GetDefaultArgumentInt(&request, "limit", 1000); limit <= 0 {
 		limit = 1000
@@ -298,6 +305,7 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 			api: {
 				SearchByKeyWord:        keywordMode,
 				RegionFilter:           region,
+				Proxy:                  proxy,
 				IsIgnoreCDN:            true,
 				IsIgnoreChinaOther:     true,
 				IsIgnoreOutsideChina:   true,
@@ -313,6 +321,7 @@ func OnlineAPIHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 				IsFingerprintx: true,
 				IsScreenshot:   true,
 				IsIconHash:     true,
+				Proxy:          proxy,
 			}},
 	}
 	if pocscan {

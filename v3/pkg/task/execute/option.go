@@ -90,6 +90,9 @@ type FingerprintConfig struct {
 	IsIconHash     bool   `json:"iconhash,omitempty" form:"iconhash"`
 	// 指纹识别时使用的端口列表，端口列表格式为nmap的格式，比如"22,80,443,5900-5910"
 	PortList string `json:"portlist,omitempty" form:"portlist"`
+	// 魔改扩展：任务级出口代理（与 OnlineAPIConfig.Proxy 同源，MCP 建任务时统一注入）。
+	// 非空时 httpx 指纹探测经该代理发出，避免容器出口 IP 直接打向目标。
+	Proxy string `json:"proxy,omitempty" form:"proxy"`
 }
 
 type OnlineAPIConfig struct {
@@ -108,6 +111,10 @@ type OnlineAPIConfig struct {
 	MaxOpenedPortPerIp int `json:"maxOpenedPortPerIp,omitempty" form:"maxOpenedPortPerIp"`
 	// 结果中同一个IP对应的域名最多数量，超过该数量则这些域名被忽略
 	MaxResolvedDomainPerIP int `json:"maxResolvedDomainPerIP,omitempty" form:"maxResolvedDomainPerIP"`
+	// 魔改扩展：任务级出口代理（http/https/socks5 URL，如 http://1.2.3.4:3128）。
+	// 非空时该任务全部外呼（crt.sh/fofa/hunter/quake）经指定代理发出，
+	// 避免容器自身出口 IP 直接暴露给测绘平台；空值走原有全局 IsProxy 策略。
+	Proxy string `json:"proxy,omitempty" form:"proxy"`
 }
 
 type PocscanConfig struct {

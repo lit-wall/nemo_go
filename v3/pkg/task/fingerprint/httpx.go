@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"github.com/chainreactors/fingers"
 	"github.com/hanc00l/nemo_go/v3/pkg/conf"
 	"github.com/hanc00l/nemo_go/v3/pkg/core"
@@ -66,8 +67,17 @@ func (h *Httpx) GetExecuteArgs(inputTempFile, outputTempFile string) (cmdArgs []
 	if h.Config.IsIconHash {
 		cmdArgs = append(cmdArgs, "-favicon")
 	}
-	// 由于chrome不支持带认证的socks5代理，因此httpx及chrome使用本地的socks5转发
-	if h.IsProxy {
+	// 任务级代理（MCP 按出口角色注入，匿名性加固 V2.0.8）：优先于全局 IsProxy 开关。
+	// httpx 原生支持 socks5 直传；remote socks5 + 截图场景 chrome 不支持带认证代理，
+	// 本地转发地址启用时仍走转发（与全局路径一致）。
+	if proxy := strings.TrimSpace(h.Config.Proxy); proxy != "" {
+		if strings.HasPrefix(proxy, "socks5://") && conf.Socks5ForwardAddr != "" {
+			cmdArgs = append(cmdArgs, "-http-proxy", fmt.Sprintf("socks5://%s", conf.Socks5ForwardAddr))
+		} else {
+			cmdArgs = append(cmdArgs, "-http-proxy", proxy)
+		}
+	} else if h.IsProxy {
+		// 由于chrome不支持带认证的socks5代理，因此httpx及chrome使用本地的socks5转发
 		if proxy := conf.GetProxyConfig(); proxy != "" {
 			if conf.Socks5ForwardAddr != "" {
 				cmdArgs = append(cmdArgs, "-http-proxy", fmt.Sprintf("socks5://%s", conf.Socks5ForwardAddr))

@@ -151,7 +151,8 @@ func (h *Hunter) Run(query string, apiKey string, pageIndex int, pageSize int, c
 	params.Add("start_time", startTime)
 	params.Add("end_time", endTime)
 	request.URL.RawQuery = params.Encode()
-	resp, err := utils.GetProxyHttpClient(h.IsProxy).Do(request)
+	// 任务级代理优先（MCP 按出口角色注入），避免容器出口 IP 直接暴露给 hunter
+	resp, err := utils.GetTaskProxyHttpClient(config.Proxy, h.IsProxy).Do(request)
 	if err != nil {
 		return
 	}

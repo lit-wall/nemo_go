@@ -105,7 +105,8 @@ func (c *Crtsh) Run(query string, apiKey string, pageIndex int, pageSize int, co
 	request.Header.Set("User-Agent", "Mozilla/5.0 (compatible; NemoBot/3.0)")
 	request.Header.Set("Accept", "application/json")
 
-	resp, err := utils.GetProxyHttpClient(c.IsProxy).Do(request)
+	// 任务级代理优先（MCP 按出口角色注入），避免容器出口 IP 直接暴露给 crt.sh
+	resp, err := utils.GetTaskProxyHttpClient(config.Proxy, c.IsProxy).Do(request)
 	if err != nil {
 		return
 	}
