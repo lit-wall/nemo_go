@@ -18,7 +18,9 @@ WORKDIR /src
 # 先拷全量源码，再 tidy（同步 replace 后的 go.sum）——若把 tidy 放在 COPY . 之前，
 # 宿主版的 go.mod/go.sum 会覆盖 tidy 结果，导致 replace 目标缺 go.sum 条目。
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod GOTOOLCHAIN=auto go mod tidy && GOTOOLCHAIN=auto go mod download
+# QEMU（ARM 宿主）构建下 proxy.golang.org 偶发瞬断（EOF）：download all 后
+# 编译阶段走离线缓存，避免构建中途二次触网失败。
+RUN --mount=type=cache,target=/go/pkg/mod GOTOOLCHAIN=auto go mod tidy && GOTOOLCHAIN=auto go mod download all
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=auto go build -ldflags "-s -w" -trimpath -o /out/server_linux_amd64 cmd/server/main.go \
  && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=auto go build -ldflags "-s -w" -trimpath -o /out/worker_linux_amd64 cmd/worker/main.go \
  && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOTOOLCHAIN=auto go build -ldflags "-s -w" -trimpath -o /out/daemon_worker_linux_amd64 cmd/daemon_worker/main.go
